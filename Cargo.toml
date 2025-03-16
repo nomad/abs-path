@@ -1,0 +1,43 @@
+[workspace]
+members = ["core", "macros"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+abs-path-core = { path = "./core" }
+abs-path-macros = { path = "./macros" }
+
+[workspace.lints.clippy]
+bool_to_int_with_if = "deny"
+cognitive_complexity = "deny"
+module_inception = "allow"
+multiple_crate_versions = "deny"
+needless_collect = "deny"
+same_name_method = "deny"
+too_many_arguments = "deny"
+too_many_lines = "deny"
+unwrap_used = "deny"
+
+[workspace.lints.rust]
+future_incompatible = { level = "deny", priority = -1 }
+missing_docs = "deny"
+nonstandard_style = { level = "deny", priority = -1 }
+refining_impl_trait = { level = "allow", priority = -1 }
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+
+[package]
+name = "abs-path"
+version.workspace = true
+edition.workspace = true
+
+[features]
+macros = ["dep:abs-path-macros"]
+
+[dependencies]
+abs-path-core = { workspace = true }
+abs-path-macros = { workspace = true, optional = true }
