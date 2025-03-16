@@ -3,5 +3,10 @@ name = "abs-path-macros"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+proc-macro = true
+
 [dependencies]
 abs-path-core = { workspace = true }
+quote = "1"
+syn = { version = "2", features = ["full"] }
