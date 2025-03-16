@@ -3,4 +3,12 @@ name = "abs-path-core"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = ["std"]
+std = ["compact_str/std", "smol_str/std"]
+serde = ["dep:serde", "compact_str/serde", "smol_str/serde"]
+
 [dependencies]
+compact_str = { version = "0.9", default-features = false }
+smol_str = { version = "0.3", default-features = false }
+serde = { version = "1", default-features = false, optional = true }
