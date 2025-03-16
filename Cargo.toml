@@ -36,7 +36,10 @@ version.workspace = true
 edition.workspace = true
 
 [features]
+default = ["std"]
+std = ["abs-path-core/std"]
 macros = ["dep:abs-path-macros"]
+serde = ["abs-path-core/serde"]
 
 [dependencies]
 abs-path-core = { workspace = true }

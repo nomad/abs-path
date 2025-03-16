@@ -49,11 +49,11 @@ impl AbsPathBuf {
 
     /// TODO: docs.
     #[inline]
-    pub fn push<T: AsRef<NodeName>>(&mut self, fs_node_name: T) -> &mut Self {
+    pub fn push<T: AsRef<NodeName>>(&mut self, node_name: T) -> &mut Self {
         if !self.is_root() {
             self.inner.push_str(MAIN_SEPARATOR_STR);
         }
-        self.inner.push_str(fs_node_name.as_ref().as_str());
+        self.inner.push_str(node_name.as_ref().as_str());
         self
     }
 

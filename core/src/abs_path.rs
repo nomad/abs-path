@@ -111,7 +111,7 @@ impl AbsPath {
     ///
     /// The caller must ensure that the given string is a valid absolute path.
     #[inline]
-    pub(crate) const unsafe fn from_str_unchecked(s: &str) -> &Self {
+    pub const unsafe fn from_str_unchecked(s: &str) -> &Self {
         unsafe { &*(s as *const str as *const Self) }
     }
 }

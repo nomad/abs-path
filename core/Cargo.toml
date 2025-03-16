@@ -4,7 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [features]
-default = ["std"]
 std = ["compact_str/std"]
 serde = ["dep:serde", "compact_str/serde", "smol_str/serde"]
 
