@@ -44,3 +44,7 @@ serde = ["abs-path-core/serde"]
 [dependencies]
 abs-path-core = { workspace = true }
 abs-path-macros = { workspace = true, optional = true }
+
+[[test]]
+name = "abs_path"
+required-features = ["macros"]
