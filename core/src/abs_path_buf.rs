@@ -148,7 +148,14 @@ impl str::FromStr for AbsPathBuf {
 impl PartialEq<&str> for AbsPathBuf {
     #[inline]
     fn eq(&self, other: &&str) -> bool {
-        self.as_str() == *other
+        self == *other
+    }
+}
+
+impl PartialEq<str> for AbsPathBuf {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
     }
 }
 
@@ -162,7 +169,14 @@ impl PartialEq<AbsPathBuf> for str {
 impl PartialEq<&AbsPath> for AbsPathBuf {
     #[inline]
     fn eq(&self, other: &&AbsPath) -> bool {
-        self.deref() == *other
+        self == *other
+    }
+}
+
+impl PartialEq<AbsPath> for AbsPathBuf {
+    #[inline]
+    fn eq(&self, other: &AbsPath) -> bool {
+        self.deref() == other
     }
 }
 

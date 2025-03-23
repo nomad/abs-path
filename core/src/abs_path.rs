@@ -186,6 +186,20 @@ impl PartialEq<AbsPathBuf> for AbsPath {
     }
 }
 
+impl PartialEq<str> for AbsPath {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_str() == other
+    }
+}
+
+impl PartialEq<AbsPath> for str {
+    #[inline]
+    fn eq(&self, other: &AbsPath) -> bool {
+        other == self
+    }
+}
+
 impl<'a> TryFrom<&'a str> for &'a AbsPath {
     type Error = AbsPathNotAbsoluteError;
 
