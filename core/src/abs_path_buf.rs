@@ -21,8 +21,15 @@ impl AbsPathBuf {
 
     /// TODO: docs.
     #[inline]
-    pub fn concat(&mut self, other: &AbsPath) -> &mut Self {
-        for other_component in other.components() {
+    pub fn concat(mut self, other: impl AsRef<AbsPath>) -> Self {
+        self.concat_mut(other.as_ref());
+        self
+    }
+
+    /// TODO: docs.
+    #[inline]
+    pub fn concat_mut(&mut self, other: impl AsRef<AbsPath>) -> &mut Self {
+        for other_component in other.as_ref().components() {
             self.push(other_component);
         }
         self

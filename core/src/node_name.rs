@@ -134,7 +134,7 @@ impl fmt::Display for InvalidNodeNameError {
             Self::SingleDot => write!(f, "file name is a single dot (`.`)"),
             Self::DoubleDot => write!(f, "file name is a double dot (`..`)"),
             Self::ContainsInvalidCharacter(c) => {
-                write!(f, "file name contains an invalid character: {:?}", c)
+                write!(f, "file name contains an invalid character: {c:?}")
             },
         }
     }

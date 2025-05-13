@@ -28,9 +28,7 @@ impl AbsPath {
         if self == Self::root() {
             Cow::Borrowed(other)
         } else {
-            let mut ret = self.to_owned();
-            ret.concat(other);
-            Cow::Owned(ret)
+            Cow::Owned(self.to_owned().concat(other))
         }
     }
 
