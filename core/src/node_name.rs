@@ -1,7 +1,7 @@
 use alloc::borrow;
 use core::{error, fmt, ops};
 
-use crate::NodeNameBuf;
+use crate::{NodeNameBuf, r#const};
 
 const INVALID_CHARACTERS: &[char] = &['/', '\\', '\0', '\n', '\r'];
 
@@ -15,6 +15,25 @@ impl NodeName {
     #[inline]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// TODO: docs.
+    #[inline]
+    pub const fn from_str(str: &str) -> Result<&Self, InvalidNodeNameError> {
+        if str.is_empty() {
+            Err(InvalidNodeNameError::Empty)
+        } else if r#const::str_eq(str, ".") {
+            Err(InvalidNodeNameError::SingleDot)
+        } else if r#const::str_eq(str, "..") {
+            Err(InvalidNodeNameError::DoubleDot)
+        } else if let Some(invalid) =
+            r#const::char_find(str, INVALID_CHARACTERS)
+        {
+            Err(InvalidNodeNameError::ContainsInvalidCharacter(invalid))
+        } else {
+            // SAFETY: checked above.
+            Ok(unsafe { NodeName::from_str_unchecked(str) })
+        }
     }
 
     /// # Safety
@@ -81,21 +100,8 @@ impl<'a> TryFrom<&'a str> for &'a NodeName {
     type Error = InvalidNodeNameError;
 
     #[inline]
-    fn try_from(s: &'a str) -> Result<Self, Self::Error> {
-        if s.is_empty() {
-            Err(InvalidNodeNameError::Empty)
-        } else if s == "." {
-            Err(InvalidNodeNameError::SingleDot)
-        } else if s == ".." {
-            Err(InvalidNodeNameError::DoubleDot)
-        } else if let Some(invalid) =
-            s.chars().find(|c| INVALID_CHARACTERS.contains(c))
-        {
-            Err(InvalidNodeNameError::ContainsInvalidCharacter(invalid))
-        } else {
-            // SAFETY: checked above.
-            Ok(unsafe { NodeName::from_str_unchecked(s) })
-        }
+    fn try_from(str: &'a str) -> Result<Self, Self::Error> {
+        NodeName::from_str(str)
     }
 }
 

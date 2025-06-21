@@ -6,6 +6,7 @@ extern crate alloc;
 
 mod abs_path;
 mod abs_path_buf;
+mod r#const;
 mod node_name;
 mod node_name_buf;
 
