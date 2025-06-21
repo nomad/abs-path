@@ -103,15 +103,19 @@ impl AbsPath {
 
     /// TODO: docs.
     #[inline]
-    pub fn node_name(&self) -> Option<&NodeName> {
-        self.components().next_back()
+    pub const fn node_name(&self) -> Option<&NodeName> {
+        self.components().next_back_const()
     }
 
     /// TODO: docs.
     #[inline]
-    pub fn parent(&self) -> Option<&Self> {
+    pub const fn parent(&self) -> Option<&Self> {
         let mut components = self.components();
-        components.next_back().is_some().then_some(components.as_path())
+        if components.next_back_const().is_some() {
+            Some(components.as_path())
+        } else {
+            None
+        }
     }
 
     /// TODO: docs.
@@ -147,9 +151,10 @@ impl AbsPath {
             Some(suffix) => {
                 if suffix.is_empty() {
                     Some(Self::root())
-                } else if let Some(MAIN_SEPARATOR_CHAR) =
-                    r#const::str_first_char(suffix)
-                {
+                } else if r#const::str_starts_with_char(
+                    suffix,
+                    MAIN_SEPARATOR_CHAR,
+                ) {
                     Some(unsafe { Self::from_str_unchecked(suffix) })
                 } else {
                     None
@@ -174,6 +179,37 @@ impl<'path> Components<'path> {
     pub const fn as_path(&self) -> &'path AbsPath {
         // SAFETY: the inner string is always a valid absolute path.
         unsafe { AbsPath::from_str_unchecked(self.inner) }
+    }
+
+    #[inline]
+    const fn next_back_const(&mut self) -> Option<&'path NodeName> {
+        let inner = self.inner;
+
+        debug_assert!(r#const::str_starts_with_str(inner, MAIN_SEPARATOR_STR));
+
+        if r#const::str_eq(inner, MAIN_SEPARATOR_STR) {
+            return None;
+        }
+
+        debug_assert!(!r#const::str_ends_with_str(inner, MAIN_SEPARATOR_STR));
+
+        let last_separator_offset = r#const::bytes_offset_of_last_occurrence(
+            inner.as_bytes(),
+            MAIN_SEPARATOR_CHAR as u8,
+        )
+        .expect("has separator");
+
+        let (rest, component_with_leading_separator) =
+            self.inner.split_at(last_separator_offset);
+
+        let component = r#const::str_slice(
+            component_with_leading_separator,
+            1..component_with_leading_separator.len(),
+        );
+
+        self.inner = if !rest.is_empty() { rest } else { MAIN_SEPARATOR_STR };
+
+        Some(unsafe { NodeName::from_str_unchecked(component) })
     }
 }
 
@@ -298,25 +334,7 @@ impl<'path> Iterator for Components<'path> {
 impl DoubleEndedIterator for Components<'_> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        debug_assert!(self.inner.starts_with(MAIN_SEPARATOR_STR));
-        debug_assert!(
-            !self.inner.ends_with(MAIN_SEPARATOR_STR)
-                || self.inner == MAIN_SEPARATOR_STR
-        );
-        let s = &self.inner[1..];
-        let (rest, component) =
-            match s.bytes().rev().position(|b| b == MAIN_SEPARATOR_CHAR as u8)
-            {
-                Some(len) => {
-                    let (rest, component_with_leading_separator) =
-                        self.inner.split_at(self.inner.len() - len - 1);
-                    (rest, &component_with_leading_separator[1..])
-                },
-                None if !s.is_empty() => (MAIN_SEPARATOR_STR, s),
-                None => return None,
-            };
-        self.inner = rest;
-        Some(unsafe { NodeName::from_str_unchecked(component) })
+        self.next_back_const()
     }
 }
 

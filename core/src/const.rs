@@ -15,6 +15,26 @@ pub(crate) const fn bytes_eq(lhs: &[u8], rhs: &[u8]) -> bool {
     true
 }
 
+/// Returns the offset of the last occurrence of the given byte in the slice,
+/// or `None` if the slice doesn't contain it.
+pub(crate) const fn bytes_offset_of_last_occurrence(
+    bytes: &[u8],
+    byte: u8,
+) -> Option<usize> {
+    let Some(mut idx) = bytes.len().checked_sub(1) else {
+        return None;
+    };
+    loop {
+        if bytes[idx] == byte {
+            return Some(idx);
+        }
+        let Some(next_idx) = idx.checked_sub(1) else {
+            return None;
+        };
+        idx = next_idx;
+    }
+}
+
 pub(crate) const fn char_contains(needle: char, haystack: &[char]) -> bool {
     let mut idx = 0;
     while idx < haystack.len() {
@@ -38,6 +58,14 @@ pub(crate) const fn str_char_offsets(str: &str, ch: char) -> CharOffsets<'_> {
 
 pub(crate) const fn str_eq(lhs: &str, rhs: &str) -> bool {
     bytes_eq(lhs.as_bytes(), rhs.as_bytes())
+}
+
+pub(crate) const fn str_ends_with_str(str: &str, suffix: &str) -> bool {
+    if suffix.len() <= str.len() {
+        str_eq(str_slice(str, str.len() - suffix.len()..str.len()), suffix)
+    } else {
+        false
+    }
 }
 
 /// Returns the first character of `str` that's included in `chars`, or `None`
@@ -126,14 +154,26 @@ pub(crate) const fn str_slice(str: &str, byte_range: Range<usize>) -> &str {
     unsafe { str::from_utf8_unchecked(subslice(str.as_bytes(), byte_range)) }
 }
 
+pub(crate) const fn str_starts_with_char(str: &str, ch: char) -> bool {
+    match str_first_char(str) {
+        Some(first_ch) if ch == first_ch => true,
+        _ => false,
+    }
+}
+
+pub(crate) const fn str_starts_with_str(str: &str, prefix: &str) -> bool {
+    if prefix.len() <= str.len() {
+        str_eq(str_slice(str, 0..prefix.len()), prefix)
+    } else {
+        false
+    }
+}
+
 pub(crate) const fn str_strip_prefix<'str>(
     str: &'str str,
     prefix: &str,
 ) -> Option<&'str str> {
-    if !str.is_char_boundary(prefix.len()) {
-        return None;
-    }
-    if str_eq(str_slice(str, 0..prefix.len()), prefix) {
+    if str_starts_with_str(str, prefix) {
         Some(str_slice(str, prefix.len()..str.len()))
     } else {
         None
