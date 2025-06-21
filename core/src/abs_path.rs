@@ -40,7 +40,7 @@ impl AbsPath {
 
     /// TODO: docs.
     #[inline]
-    pub fn components(&self) -> Components<'_> {
+    pub const fn components(&self) -> Components<'_> {
         Components { inner: self.as_str() }
     }
 
@@ -139,17 +139,24 @@ impl AbsPath {
 
     /// TODO: docs.
     #[inline]
-    pub fn strip_prefix<'this>(
+    pub const fn strip_prefix<'this>(
         &'this self,
         other: &Self,
     ) -> Option<&'this Self> {
-        self.as_str().strip_prefix(other.as_str()).map(|prefix| {
-            if prefix.is_empty() {
-                Self::root()
-            } else {
-                unsafe { Self::from_str_unchecked(prefix) }
-            }
-        })
+        match r#const::str_strip_prefix(self.as_str(), other.as_str()) {
+            Some(suffix) => {
+                if suffix.is_empty() {
+                    Some(Self::root())
+                } else if let Some(MAIN_SEPARATOR_CHAR) =
+                    r#const::str_first_char(suffix)
+                {
+                    Some(unsafe { Self::from_str_unchecked(suffix) })
+                } else {
+                    None
+                }
+            },
+            None => None,
+        }
     }
 
     /// # Safety
@@ -164,7 +171,7 @@ impl AbsPath {
 impl<'path> Components<'path> {
     /// TODO: docs.
     #[inline]
-    pub fn as_path(&self) -> &'path AbsPath {
+    pub const fn as_path(&self) -> &'path AbsPath {
         // SAFETY: the inner string is always a valid absolute path.
         unsafe { AbsPath::from_str_unchecked(self.inner) }
     }

@@ -126,6 +126,20 @@ pub(crate) const fn str_slice(str: &str, byte_range: Range<usize>) -> &str {
     unsafe { str::from_utf8_unchecked(subslice(str.as_bytes(), byte_range)) }
 }
 
+pub(crate) const fn str_strip_prefix<'str>(
+    str: &'str str,
+    prefix: &str,
+) -> Option<&'str str> {
+    if !str.is_char_boundary(prefix.len()) {
+        return None;
+    }
+    if str_eq(str_slice(str, 0..prefix.len()), prefix) {
+        Some(str_slice(str, prefix.len()..str.len()))
+    } else {
+        None
+    }
+}
+
 pub(crate) const fn subslice<T>(slice: &[T], range: Range<usize>) -> &[T] {
     assert!(range.start <= range.end);
     assert!(range.end <= slice.len());
