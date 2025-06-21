@@ -27,7 +27,7 @@ impl NodeName {
         } else if r#const::str_eq(str, "..") {
             Err(InvalidNodeNameError::DoubleDot)
         } else if let Some(invalid) =
-            r#const::char_find(str, INVALID_CHARACTERS)
+            r#const::str_find_char(str, INVALID_CHARACTERS)
         {
             Err(InvalidNodeNameError::ContainsInvalidCharacter(invalid))
         } else {

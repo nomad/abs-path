@@ -3,7 +3,13 @@ use core::error::Error;
 use core::fmt;
 use core::ops::Deref;
 
-use crate::{AbsPathBuf, MAIN_SEPARATOR_CHAR, MAIN_SEPARATOR_STR, NodeName};
+use crate::{
+    AbsPathBuf,
+    MAIN_SEPARATOR_CHAR,
+    MAIN_SEPARATOR_STR,
+    NodeName,
+    r#const,
+};
 
 /// The borrowed version of [`AbsPathBuf`].
 #[derive(Eq, PartialEq, Hash)]
@@ -36,6 +42,47 @@ impl AbsPath {
     #[inline]
     pub fn components(&self) -> Components<'_> {
         Components { inner: self.as_str() }
+    }
+
+    /// TODO: docs.
+    #[inline]
+    pub const fn from_str(
+        str: &str,
+    ) -> Result<&Self, AbsPathNotAbsoluteError> {
+        let mut separator_offsets =
+            r#const::str_char_offsets(str, MAIN_SEPARATOR_CHAR);
+
+        let Some(offset) = separator_offsets.next() else {
+            // The string doesn't contain the path separator.
+            return Err(AbsPathNotAbsoluteError);
+        };
+        if offset != 0 {
+            // The string doesn't start with the path separator.
+            return Err(AbsPathNotAbsoluteError);
+        }
+
+        let separator_len = MAIN_SEPARATOR_STR.len();
+        let mut valid_up_to = separator_len;
+
+        while let Some(offset) = separator_offsets.next() {
+            let component = r#const::str_slice(str, valid_up_to..offset);
+            if NodeName::from_str(component).is_err() {
+                // The string contains an invalid component.
+                return Err(AbsPathNotAbsoluteError);
+            }
+            valid_up_to = offset + separator_len;
+        }
+
+        let last_component = r#const::str_slice(str, valid_up_to..str.len());
+        if !last_component.is_empty()
+            && NodeName::from_str(last_component).is_err()
+        {
+            // The string contains an invalid component.
+            return Err(AbsPathNotAbsoluteError);
+        }
+
+        // SAFETY: just checked that the string is a valid absolute path.
+        Ok(unsafe { AbsPath::from_str_unchecked(str) })
     }
 
     /// TODO: docs.
@@ -203,39 +250,7 @@ impl<'a> TryFrom<&'a str> for &'a AbsPath {
 
     #[inline]
     fn try_from(str: &'a str) -> Result<Self, Self::Error> {
-        let mut components = str.match_indices(MAIN_SEPARATOR_CHAR);
-
-        let Some((offset, _)) = components.next() else {
-            // The string doesn't contain the path separator.
-            return Err(AbsPathNotAbsoluteError);
-        };
-        if offset != 0 {
-            // The string doesn't start with the path separator.
-            return Err(AbsPathNotAbsoluteError);
-        }
-
-        let separator_len = MAIN_SEPARATOR_STR.len();
-        let mut valid_up_to = separator_len;
-
-        for (offset, _) in components {
-            let component = &str[valid_up_to..offset];
-            if <&NodeName>::try_from(component).is_err() {
-                // The string contains an invalid component.
-                return Err(AbsPathNotAbsoluteError);
-            }
-            valid_up_to = offset + separator_len;
-        }
-
-        let last_component = &str[valid_up_to..];
-        if !last_component.is_empty()
-            && <&NodeName>::try_from(last_component).is_err()
-        {
-            // The string contains an invalid component.
-            return Err(AbsPathNotAbsoluteError);
-        }
-
-        // SAFETY: just checked that the string is a valid absolute path.
-        Ok(unsafe { AbsPath::from_str_unchecked(str) })
+        <AbsPath>::from_str(str)
     }
 }
 
