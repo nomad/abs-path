@@ -126,6 +126,18 @@ impl AbsPath {
 
     /// TODO: docs.
     #[inline]
+    pub const fn split_last(&self) -> Option<(&Self, &NodeName)> {
+        let mut components = self.components();
+        match components.next_back_const() {
+            Some(last_component) => {
+                Some((components.as_path(), last_component))
+            },
+            None => None,
+        }
+    }
+
+    /// TODO: docs.
+    #[inline]
     pub fn starts_with<P>(&self, base: P) -> bool
     where
         P: AsRef<AbsPath>,

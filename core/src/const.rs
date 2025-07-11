@@ -155,10 +155,7 @@ pub(crate) const fn str_slice(str: &str, byte_range: Range<usize>) -> &str {
 }
 
 pub(crate) const fn str_starts_with_char(str: &str, ch: char) -> bool {
-    match str_first_char(str) {
-        Some(first_ch) if ch == first_ch => true,
-        _ => false,
-    }
+    matches!(str_first_char(str), Some(first_ch) if ch == first_ch)
 }
 
 pub(crate) const fn str_starts_with_str(str: &str, prefix: &str) -> bool {
