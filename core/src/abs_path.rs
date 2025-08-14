@@ -159,6 +159,10 @@ impl AbsPath {
         &'this self,
         other: &Self,
     ) -> Option<&'this Self> {
+        if other.is_root() {
+            return Some(self);
+        }
+
         match r#const::str_strip_prefix(self.as_str(), other.as_str()) {
             Some(suffix) => {
                 if suffix.is_empty() {

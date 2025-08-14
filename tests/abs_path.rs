@@ -10,7 +10,7 @@ fn components_empty() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn components_1() {
-    let path = <&AbsPath>::try_from("/baz.txt").unwrap();
+    let path = path!("/baz.txt");
     let mut components = path.components();
     assert_eq!(components.next().unwrap(), "baz.txt");
     assert_eq!(components.next(), None);
@@ -19,7 +19,7 @@ fn components_1() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn components_2() {
-    let path = <&AbsPath>::try_from("/foo/bar/baz.txt").unwrap();
+    let path = path!("/foo/bar/baz.txt");
     let mut components = path.components();
     assert_eq!(components.next().unwrap(), "foo");
     assert_eq!(components.next().unwrap(), "bar");
@@ -30,7 +30,7 @@ fn components_2() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn components_rev_1() {
-    let path = <&AbsPath>::try_from("/baz.txt").unwrap();
+    let path = path!("/baz.txt");
     let mut components = path.components();
     assert_eq!(components.next_back().unwrap(), "baz.txt");
     assert_eq!(components.next(), None);
@@ -39,7 +39,7 @@ fn components_rev_1() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn components_rev_2() {
-    let path = <&AbsPath>::try_from("/foo/bar/baz.txt").unwrap();
+    let path = path!("/foo/bar/baz.txt");
     let mut components = path.components();
     assert_eq!(components.next_back().unwrap(), "baz.txt");
     assert_eq!(components.next_back().unwrap(), "bar");
@@ -73,10 +73,17 @@ fn from_iter_1() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn starts_with() {
-    let p = <&AbsPath>::try_from("/foo/bar").unwrap();
+    let p = path!("/foo/bar");
     assert!(p.starts_with(AbsPath::root()));
     assert!(p.starts_with(path!("/foo")));
     assert!(p.starts_with(path!("/foo/bar")));
     assert!(!p.starts_with(path!("/foo/bar.rs")));
     assert!(!p.starts_with(path!("/foo/bar/baz")));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn strip_prefix_root() {
+    let p = path!("/foo/bar");
+    assert_eq!(p.strip_prefix(AbsPath::root()).unwrap(), "/foo/bar");
 }
