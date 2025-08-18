@@ -93,6 +93,20 @@ impl Borrow<AbsPath> for AbsPathBuf {
     }
 }
 
+impl Borrow<str> for AbsPathBuf {
+    #[inline]
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl AsRef<AbsPath> for AbsPathBuf {
+    #[inline]
+    fn as_ref(&self) -> &AbsPath {
+        self
+    }
+}
+
 impl AsRef<str> for AbsPathBuf {
     #[inline]
     fn as_ref(&self) -> &str {
@@ -105,13 +119,6 @@ impl AsRef<std::path::Path> for AbsPathBuf {
     #[inline]
     fn as_ref(&self) -> &std::path::Path {
         <AbsPath>::as_ref(self)
-    }
-}
-
-impl AsRef<AbsPath> for AbsPathBuf {
-    #[inline]
-    fn as_ref(&self) -> &AbsPath {
-        self
     }
 }
 
