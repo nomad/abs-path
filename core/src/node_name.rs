@@ -3,7 +3,12 @@ use core::{error, fmt, ops};
 
 use crate::{NodeNameBuf, r#const};
 
-const INVALID_CHARACTERS: &[char] = &['/', '\\', '\0', '\n', '\r'];
+#[cfg(not(target_os = "windows"))]
+const INVALID_CHARACTERS: &[char] = &['/', '\0'];
+
+#[cfg(target_os = "windows")]
+const INVALID_CHARACTERS: &[char] =
+    &['<', '>', ':', '"', '/', '\\', '|', '?', '*', '\0', '\r', '\n', '\t'];
 
 /// The borrowed version of [`NodeNameBuf`].
 #[derive(Eq, PartialEq, Hash)]
