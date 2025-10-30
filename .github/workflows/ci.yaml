@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 0 1 * *'
+
+env:
+  RUSTC_WRAPPER: "sccache"
+  SCCACHE_GHA_ENABLED: true
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-features --all-targets --no-deps -- -D warnings
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: dtolnay/rust-toolchain@stable
+      - run: RUSTFLAGS="--deny warnings" cargo doc --all-features
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
+      - run: cargo fmt --check
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-features --no-fail-fast --workspace
