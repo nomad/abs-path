@@ -104,7 +104,7 @@ fn normalize_4() {
 #[cfg_attr(target_os = "windows", ignore)]
 fn normalize_5() {
     let p = "/.";
-    assert_eq!(AbsPath::normalize(p).as_deref(), Ok(path!("/")));
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/"))));
 }
 
 #[test]
