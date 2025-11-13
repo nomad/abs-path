@@ -1,10 +1,13 @@
 use alloc::borrow::{Cow, ToOwned};
 use core::error::Error;
 use core::fmt;
-use core::ops::Deref;
+use core::ops::{Deref, Range};
+
+use compact_str::CompactString;
 
 use crate::{
     AbsPathBuf,
+    InvalidNodeNameError,
     MAIN_SEPARATOR_CHAR,
     MAIN_SEPARATOR_STR,
     NodeName,
@@ -19,6 +22,56 @@ pub struct AbsPath(str);
 /// TODO: docs.
 pub struct Components<'path> {
     inner: &'path str,
+}
+
+/// TODO: docs.
+#[cfg(feature = "std")]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AbsPathFromPathError {
+    /// The path is not absolute.
+    NotAbsolute,
+
+    /// The path is not valid UTF-8.
+    NotUtf8,
+}
+
+/// TODO: docs.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct AbsPathNotAbsoluteError;
+
+/// The type of error that can occur when [`normalizing`](AbsPath::normalize) a
+/// path.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum NormalizeError {
+    /// The path contains `..` components that would navigate above the root.
+    EscapesRoot,
+
+    /// The path component an invalid character at the given byte offset.
+    InvalidCharacter { byte_offset: usize, ch: char },
+
+    /// The path is not absolute.
+    NotAbsolute,
+}
+
+struct NormalizeState<'a> {
+    /// The offset in the original string up to which components have been
+    /// processed. If it's less then the length of the original string, then
+    /// it's guaranteed to be right after a path separator.
+    cursor: usize,
+
+    /// The normalized path being built. This is always a valid absolute path.
+    normalized_path: NormalizedPath,
+
+    /// The original string being normalized.
+    original_str: &'a str,
+}
+
+enum NormalizedPath {
+    Alloc(CompactString),
+    /// A byte range in the [original string](NormalizeState::original_str)
+    /// representing the path. Slicing with this range is guaranteed to return
+    /// a valid absolute path.
+    Slice(Range<usize>),
 }
 
 impl AbsPath {
@@ -105,6 +158,14 @@ impl AbsPath {
     #[inline]
     pub const fn node_name(&self) -> Option<&NodeName> {
         self.components().next_back_const()
+    }
+
+    /// TODO: docs.
+    #[inline]
+    pub fn normalize(str: &str) -> Result<Cow<'_, Self>, NormalizeError> {
+        let mut state = NormalizeState::new(str)?;
+        while !state.process_component()? {}
+        Ok(state.finish())
     }
 
     /// TODO: docs.
@@ -226,6 +287,165 @@ impl<'path> Components<'path> {
         self.inner = if !rest.is_empty() { rest } else { MAIN_SEPARATOR_STR };
 
         Some(unsafe { NodeName::from_str_unchecked(component) })
+    }
+}
+
+impl<'a> NormalizeState<'a> {
+    #[inline]
+    fn finish(self) -> Cow<'a, AbsPath> {
+        debug_assert!(self.cursor == self.original_str.len());
+        match self.normalized_path {
+            NormalizedPath::Alloc(str) => Cow::Owned(AbsPathBuf::new(str)),
+            NormalizedPath::Slice(range) => {
+                // SAFETY: the given range always slices a valid absolute path.
+                let str = &self.original_str[range];
+                Cow::Borrowed(unsafe { AbsPath::from_str_unchecked(str) })
+            },
+        }
+    }
+
+    #[inline]
+    fn new(original_str: &'a str) -> Result<Self, NormalizeError> {
+        if original_str.starts_with(MAIN_SEPARATOR_STR) {
+            let cursor = MAIN_SEPARATOR_STR.len();
+            Ok(Self {
+                cursor,
+                normalized_path: NormalizedPath::Slice(0..cursor),
+                original_str,
+            })
+        } else {
+            Err(NormalizeError::NotAbsolute)
+        }
+    }
+
+    #[inline]
+    fn process_component(&mut self) -> Result<bool, NormalizeError> {
+        let (component_len, is_last_component) =
+            match self.original_str.as_bytes()[self.cursor..]
+                .iter()
+                .position(|&b| b == MAIN_SEPARATOR_CHAR as u8)
+            {
+                Some(pos) => (pos, false),
+                None => (self.original_str.len() - self.cursor, true),
+            };
+
+        Self::push_component(
+            &mut self.normalized_path,
+            self.original_str,
+            self.cursor..self.cursor + component_len,
+        )?;
+
+        Ok(if is_last_component {
+            self.cursor = self.original_str.len();
+            true
+        } else {
+            self.cursor += component_len + MAIN_SEPARATOR_STR.len();
+            self.cursor == self.original_str.len()
+        })
+    }
+
+    #[inline]
+    fn push_component(
+        normalized_path: &mut NormalizedPath,
+        original_str: &'a str,
+        component_range: Range<usize>,
+    ) -> Result<(), NormalizeError> {
+        debug_assert!(component_range.end <= original_str.len(),);
+        debug_assert!(
+            original_str[..component_range.start]
+                .ends_with(MAIN_SEPARATOR_CHAR)
+        );
+
+        let component = &original_str[component_range.clone()];
+
+        let Err(err) = NodeName::from_str(component) else {
+            match normalized_path {
+                NormalizedPath::Alloc(str) => {
+                    if str != MAIN_SEPARATOR_STR {
+                        str.push_str(MAIN_SEPARATOR_STR);
+                    }
+                    str.push_str(component);
+                },
+                NormalizedPath::Slice(current_range) => {
+                    if current_range.len() == MAIN_SEPARATOR_STR.len() {
+                        *current_range = component_range;
+                        current_range.start -= MAIN_SEPARATOR_STR.len();
+                        return Ok(());
+                    }
+
+                    // If the component is an extension of the current string
+                    // slice, we can avoid allocating.
+                    if current_range.end + MAIN_SEPARATOR_STR.len()
+                        == component_range.start
+                    {
+                        current_range.end = component_range.end;
+                        return Ok(());
+                    }
+
+                    let mut new_path = CompactString::with_capacity(
+                        current_range.len()
+                            + MAIN_SEPARATOR_STR.len()
+                            + component_range.len(),
+                    );
+
+                    new_path.push_str(&original_str[current_range.clone()]);
+                    new_path.push_str(MAIN_SEPARATOR_STR);
+                    new_path.push_str(component);
+
+                    *normalized_path = NormalizedPath::Alloc(new_path);
+                },
+            }
+            return Ok(());
+        };
+
+        match err {
+            InvalidNodeNameError::Empty | InvalidNodeNameError::SingleDot => {
+                return Ok(());
+            },
+            InvalidNodeNameError::ContainsInvalidCharacter(ch) => {
+                return Err(NormalizeError::InvalidCharacter {
+                    byte_offset: component_range.start,
+                    ch,
+                });
+            },
+            InvalidNodeNameError::DoubleDot => {},
+        }
+
+        let current_path = match normalized_path {
+            NormalizedPath::Alloc(str) => &**str,
+            NormalizedPath::Slice(range) => &original_str[range.clone()],
+        };
+
+        let offset_of_last_separator =
+            r#const::bytes_offset_of_last_occurrence(
+                current_path.as_bytes(),
+                MAIN_SEPARATOR_CHAR as u8,
+            )
+            .ok_or(NormalizeError::EscapesRoot)?;
+
+        let new_len = if offset_of_last_separator == 0 {
+            if current_path.len() == MAIN_SEPARATOR_STR.len() {
+                return Err(NormalizeError::EscapesRoot);
+            } else {
+                MAIN_SEPARATOR_STR.len()
+            }
+        } else {
+            offset_of_last_separator
+        };
+
+        match normalized_path {
+            NormalizedPath::Alloc(str) => {
+                // SAFETY: the new length is less than the old length.
+                unsafe {
+                    str.set_len(new_len);
+                }
+            },
+            NormalizedPath::Slice(range) => {
+                range.end = range.start + new_len;
+            },
+        }
+
+        Ok(())
     }
 }
 
@@ -361,21 +581,6 @@ impl fmt::Debug for Components<'_> {
     }
 }
 
-/// TODO: docs.
-#[cfg(feature = "std")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum AbsPathFromPathError {
-    /// The path is not absolute.
-    NotAbsolute,
-
-    /// The path is not valid UTF-8.
-    NotUtf8,
-}
-
-/// TODO: docs.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct AbsPathNotAbsoluteError;
-
 #[cfg(feature = "std")]
 impl fmt::Display for AbsPathFromPathError {
     #[inline]
@@ -387,6 +592,9 @@ impl fmt::Display for AbsPathFromPathError {
     }
 }
 
+#[cfg(feature = "std")]
+impl Error for AbsPathFromPathError {}
+
 impl fmt::Display for AbsPathNotAbsoluteError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -394,9 +602,30 @@ impl fmt::Display for AbsPathNotAbsoluteError {
     }
 }
 
-#[cfg(feature = "std")]
-impl Error for AbsPathFromPathError {}
 impl Error for AbsPathNotAbsoluteError {}
+
+impl fmt::Display for NormalizeError {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::EscapesRoot => {
+                f.write_str("path escapes the root via `..` components")
+            },
+            Self::InvalidCharacter { byte_offset, ch } => {
+                write!(
+                    f,
+                    "path contains invalid character '{ch}' at byte range \
+                     {}..{}",
+                    byte_offset,
+                    byte_offset + ch.len_utf8(),
+                )
+            },
+            Self::NotAbsolute => AbsPathNotAbsoluteError.fmt(f),
+        }
+    }
+}
+
+impl Error for NormalizeError {}
 
 #[cfg(feature = "serde")]
 mod serde_impls {
