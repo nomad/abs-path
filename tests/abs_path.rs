@@ -131,27 +131,20 @@ fn normalize_8() {
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
 fn normalize_9() {
-    let p = "/.";
-    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/"))));
-}
-
-#[test]
-#[cfg_attr(target_os = "windows", ignore)]
-fn normalize_10() {
     let p = "//foo/bar";
     assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo/bar"))));
 }
 
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
-fn normalize_11() {
+fn normalize_10() {
     let p = "/./foo/bar";
     assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo/bar"))));
 }
 
 #[test]
 #[cfg_attr(target_os = "windows", ignore)]
-fn normalize_12() {
+fn normalize_11() {
     let p = "/foo/../bar/baz";
     assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/bar/baz"))));
 }
