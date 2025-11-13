@@ -297,8 +297,8 @@ impl<'a> NormalizeState<'a> {
         match self.normalized_path {
             NormalizedPath::Alloc(str) => Cow::Owned(AbsPathBuf::new(str)),
             NormalizedPath::Slice(range) => {
-                // SAFETY: the given range always slices a valid absolute path.
                 let str = &self.original_str[range];
+                // SAFETY: the given range always slices a valid absolute path.
                 Cow::Borrowed(unsafe { AbsPath::from_str_unchecked(str) })
             },
         }
