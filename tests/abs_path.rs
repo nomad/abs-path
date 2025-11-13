@@ -1,4 +1,6 @@
-use abs_path::{AbsPath, AbsPathBuf, NodeName, path};
+use std::borrow::Cow;
+
+use abs_path::{AbsPath, AbsPathBuf, NodeName, NormalizeError, path};
 
 #[test]
 fn components_empty() {
@@ -68,6 +70,83 @@ fn from_iter_1() {
         .collect();
 
     assert_eq!(path, "/foo/bar/baz.txt");
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_1() {
+    let p = "/foo/..";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_2() {
+    let p = "/foo/.";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_3() {
+    let p = "/foo//bar";
+    assert_eq!(AbsPath::normalize(p).as_deref(), Ok(path!("/foo/bar")));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_4() {
+    let p = "/foo/bar/../baz/";
+    assert_eq!(AbsPath::normalize(p).as_deref(), Ok(path!("/foo/baz")));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_5() {
+    let p = "/.";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_6() {
+    let p = "/foo/../bar/.//baz";
+    assert_eq!(AbsPath::normalize(p).as_deref(), Ok(path!("/bar/baz")));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_7() {
+    let p = "/../foo";
+    assert_eq!(AbsPath::normalize(p), Err(NormalizeError::EscapesRoot));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_8() {
+    let p = "/foo//";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_9() {
+    let p = "//foo/bar";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo/bar"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_10() {
+    let p = "/./foo/bar";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/foo/bar"))));
+}
+
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn normalize_11() {
+    let p = "/foo/../bar/baz";
+    assert_eq!(AbsPath::normalize(p), Ok(Cow::Borrowed(path!("/bar/baz"))));
 }
 
 #[test]

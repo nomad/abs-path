@@ -12,7 +12,12 @@ mod node_name_buf;
 
 #[cfg(feature = "std")]
 pub use abs_path::AbsPathFromPathError;
-pub use abs_path::{AbsPath, AbsPathNotAbsoluteError, Components};
+pub use abs_path::{
+    AbsPath,
+    AbsPathNotAbsoluteError,
+    Components,
+    NormalizeError,
+};
 pub use abs_path_buf::AbsPathBuf;
 pub use node_name::{InvalidNodeNameError, NodeName};
 pub use node_name_buf::NodeNameBuf;
