@@ -307,7 +307,7 @@ impl<'a> NormalizeState<'a> {
     #[inline]
     #[cfg(windows)]
     fn new(original_str: &'a str) -> Result<Self, NormalizeError> {
-        if matches!(original_str.chars().next(), Some('a'..='z' | 'A'..='Z')) && &original_str[1..4] == ":\\" {
+        if matches!(original_str.chars().next(), Some('a'..='z' | 'A'..='Z')) && &original_str[1..3] == ":\\" {
             let cursor = 4; // e.g. "C:\\"
             Ok(Self {
                 cursor,
