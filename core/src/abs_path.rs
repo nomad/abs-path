@@ -305,6 +305,22 @@ impl<'a> NormalizeState<'a> {
     }
 
     #[inline]
+    #[cfg(windows)]
+    fn new(original_str: &'a str) -> Result<Self, NormalizeError> {
+        if matches!(original_str.chars().next(), Some('a'..='z' | 'A'..='Z')) && &original_str[1..3] == ":\\" {
+            let cursor = 4; // e.g. "C:\\"
+            Ok(Self {
+                cursor,
+                normalized_path: NormalizedPath::Slice(0..cursor),
+                original_str,
+            })
+        } else {
+            Err(NormalizeError::NotAbsolute)
+        }
+    }
+
+    #[inline]
+    #[cfg(not(windows))]
     fn new(original_str: &'a str) -> Result<Self, NormalizeError> {
         if original_str.starts_with(MAIN_SEPARATOR_STR) {
             let cursor = MAIN_SEPARATOR_STR.len();
