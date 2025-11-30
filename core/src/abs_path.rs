@@ -109,13 +109,13 @@ impl AbsPath {
             // The string doesn't contain the path separator.
             return Err(AbsPathNotAbsoluteError);
         };
-        if offset != 0 {
-            // The string doesn't start with the path separator.
+
+        if offset != (if cfg!(windows) { 2 } else { 0 }) {
             return Err(AbsPathNotAbsoluteError);
         }
 
         let separator_len = MAIN_SEPARATOR_STR.len();
-        let mut valid_up_to = separator_len;
+        let mut valid_up_to = separator_len + (if cfg!(windows) { 2 } else { 0 });
 
         while let Some(offset) = separator_offsets.next() {
             let component = r#const::str_slice(str, valid_up_to..offset);
@@ -306,15 +306,31 @@ impl<'a> NormalizeState<'a> {
 
     #[inline]
     fn new(original_str: &'a str) -> Result<Self, NormalizeError> {
-        if original_str.starts_with(MAIN_SEPARATOR_STR) {
-            let cursor = MAIN_SEPARATOR_STR.len();
-            Ok(Self {
-                cursor,
-                normalized_path: NormalizedPath::Slice(0..cursor),
-                original_str,
-            })
-        } else {
-            Err(NormalizeError::NotAbsolute)
+        let cursor = MAIN_SEPARATOR_STR.len() + if cfg!(windows) { 2 } else { 0 };
+        #[cfg(windows)]
+        {
+            if matches!(original_str.chars().next(), Some('a'..='z' | 'A'..='Z')) && original_str.get(1..cursor) == Some(":\\") {
+                Ok(Self {
+                    cursor,
+                    normalized_path: NormalizedPath::Slice(0..cursor),
+                    original_str,
+                })
+            } else {
+                Err(NormalizeError::NotAbsolute)
+            }
+        }
+
+        #[cfg(not(windows))]
+        {
+            if original_str.starts_with(MAIN_SEPARATOR_STR) {
+                Ok(Self {
+                    cursor,
+                    normalized_path: NormalizedPath::Slice(0..cursor),
+                    original_str,
+                })
+            } else {
+                Err(NormalizeError::NotAbsolute)
+            }
         }
     }
 
@@ -654,5 +670,15 @@ mod serde_impls {
                 .try_into()
                 .map_err(D::Error::custom)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AbsPath;
+    #[cfg(windows)]
+    #[test]
+    fn test_windows_abs_path() {
+        assert!(AbsPath::from_str("C:\\Users\\User1").is_ok());
     }
 }
